@@ -1,0 +1,36 @@
+{
+  "url": "http://www.example.com",
+  "server": {
+    "port": 2368,
+    "host": "127.0.0.1"
+  },
+  "database": {
+    "client": "mysql",
+    "connection": {
+      "host": "",
+      "user": "ghost",
+      "password": "",
+      "database": "ghost"
+    }
+  },
+  "mail": {
+    "transport": "Direct"
+  },
+  "logging": {
+    "transports": [
+      "file",
+      "stdout"
+    ]
+  },
+  "storage": {
+    "active": "s3",
+    "s3": {
+     "bucket": "",
+     "pathPrefix": "ghost/"
+    }
+  },
+  "process": "systemd",
+  "paths": {
+    "contentPath": "/var/www/ghost/content"
+  }
+}
