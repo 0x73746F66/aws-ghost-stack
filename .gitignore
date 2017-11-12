@@ -1,0 +1,6 @@
+.idea
+.ssh
+.git
+**.pem
+**.zip
+credentials
