@@ -292,7 +292,10 @@ Resources:
               - 'elasticloadbalancing:Describe*'
               - 'autoscaling:Describe*'
               - 'cloudwatch:*'
-              - 'logs:*'
+              - 'logs:CreateLogGroup'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'logs:DescribeLogStreams'
               - 'sns:*'
             Resource: '*'
       Roles:
