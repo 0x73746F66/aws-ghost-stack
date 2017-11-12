@@ -1,0 +1,625 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: Bastion Host
+Parameters:
+  Owner:
+    Description: Enter Team or Individual Name Responsible for the Stack.
+    Type: String
+    Default: Chris Langton
+  Project:
+    Description: Enter Project Name.
+    Type: String
+    Default: Bastion Creation
+  DeleteAfter:
+    Description: >-
+      Enter Date It's Ok to Delete the Stack or 'Never' if meant to be
+      persistent.
+    Type: String
+    Default: 00/00/201x
+  VPC:
+    Description: Select VPC.
+    Type: 'AWS::EC2::VPC::Id'
+  PublicSubnet:
+    Description: Public Subnet to Deploy Bastion Host in.
+    Type: 'AWS::EC2::Subnet::Id'
+  PublicNetworkAcl:
+    Description: Enter Public Network ACL ID.
+    Type: String
+    Default: acl-0000000
+  InternalAccessSecurityGroup:
+    Description: Security Group That Allows Bastion Host Access to Instances.
+    Type: 'AWS::EC2::SecurityGroup::Id'
+  OsType:
+    Description: Select OS Type for Bastion Host.
+    Type: String
+    Default: amazon
+    AllowedValues:
+      - amazon
+      - centos
+      - rhel
+      - suse
+      - ubuntu
+      - windows
+  NetworkAccessIP:
+    Description: Source that has SSH access to the bastion host.
+    Type: String
+    MinLength: '9'
+    MaxLength: '18'
+    Default: 59.167.119.137/32
+    AllowedPattern: '(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})/(\d{1,2})'
+    ConstraintDescription: must be a valid CIDR range of the form x.x.x.x/x.
+  PackageList:
+    Description: Enter Packages to install (Space Separated)
+    Type: String
+    Default: curl wget ca-certificates openssl git nmap awscli yum-utils cloud-init
+  InstallChefdk:
+    Description: Install ChefDK?
+    Type: String
+    Default: 'true'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  ChefdkVersion:
+    Description: Enter ChefDK Version (Skip if Not Installing ChefDK)
+    Type: String
+    Default: 0.18.30-1
+  InstallChefClient:
+    Description: Install Chef Client?
+    Type: String
+    Default: 'false'
+    AllowedValues:
+      - 'true'
+      - 'false'
+  ChefClientVersion:
+    Description: Enter Chef Client Version (Skip if Not Installing Chef Client)
+    Type: String
+    Default: 12.15.19
+  Ec2KeyPair:
+    Description: Select Keypair to Assign to EC2 Instances
+    Type: 'AWS::EC2::KeyPair::KeyName'
+  InstanceType:
+    Description: Select Instance Type.
+    Type: String
+    Default: t2.medium
+    AllowedValues:
+      - t2.nano
+      - t2.micro
+      - t2.small
+      - t2.medium
+      - t2.large
+      - m1.small
+      - m1.medium
+      - m1.large
+      - m1.xlarge
+      - m2.xlarge
+      - m2.2xlarge
+      - m2.4xlarge
+      - m3.medium
+      - m3.large
+      - m3.xlarge
+      - m3.2xlarge
+      - m4.large
+      - m4.xlarge
+      - m4.2xlarge
+      - m4.4xlarge
+      - m4.10xlarge
+      - c1.medium
+      - c1.xlarge
+      - c3.large
+      - c3.xlarge
+      - c3.2xlarge
+      - c3.4xlarge
+      - c3.8xlarge
+      - c4.large
+      - c4.xlarge
+      - c4.2xlarge
+      - c4.4xlarge
+      - c4.8xlarge
+      - g2.2xlarge
+      - g2.8xlarge
+      - r3.large
+      - r3.xlarge
+      - r3.2xlarge
+      - r3.4xlarge
+      - r3.8xlarge
+      - i2.xlarge
+      - i2.2xlarge
+      - i2.4xlarge
+      - i2.8xlarge
+      - d2.xlarge
+      - d2.2xlarge
+      - d2.4xlarge
+      - d2.8xlarge
+      - hi1.4xlarge
+      - hs1.8xlarge
+      - cr1.8xlarge
+      - cc2.8xlarge
+      - cg1.4xlarge
+    ConstraintDescription: Must be a valid EC2 instance type.
+Mappings:
+  RegionMap:
+    ap-southeast-2:
+      AMIAmazon: ami-8536d6e7
+      AMICentos: ami-8536d6e7
+      AMIRhel: ami-8536d6e7
+      AMISuse: ami-8536d6e7
+      AMIUbuntu: ami-8536d6e7
+      AMIWindows: ami-8536d6e7
+    us-west-2:
+      AMIAmazon: ami-e689729e
+      AMICentos: ami-d2c924b2
+      AMIRhel: ami-775e4f16
+      AMISuse: ami-d2627db3
+      AMIUbuntu: ami-d732f0b7
+      AMIWindows: ami-2827f548
+    us-east-1:
+      AMIAmazon: ami-8c1be5f6
+      AMICentos: ami-6d1c2007
+      AMIRhel: ami-2051294a
+      AMISuse: ami-b7b4fedd
+      AMIUbuntu: ami-2d39803a
+      AMIWindows: ami-ee7805f9
+  bootstrap:
+    rhel:
+      warmebs: >-
+        echo 'ACTION: Performing EBS Warming' && dd if=/dev/xvda of=/dev/xvda
+        conv=notrunc bs=1M status=progress
+      yumupdate: yum update -y
+      installpackagelist: 'yum install -y '
+    ubuntu:
+      warmebs: >-
+        echo 'ACTION: Performing EBS Warming' && dd if=/dev/xvda of=/dev/xvda
+        conv=notrunc bs=1M status=progress
+      installpackagelist: 'apt-get update && apt-get install '
+    linux:
+      installchefdk: 'curl -L https://omnitruck.chef.io/install.sh | bash -s -- -P chefdk -v '
+      installchefclient: 'curl -L https://omnitruck.chef.io/install.sh | bash -s -- -P chef -v '
+    windows:
+      installchefdk: >-
+        . { iwr -useb https://omnitruck.chef.io/install.ps1 } | iex; install
+        -project chefdk -version
+      installchefclient: >-
+        . { iwr -useb https://omnitruck.chef.io/install.ps1 } | iex; install
+        -project chef -version
+Conditions:
+  AmazonHost: !Equals
+    - !Ref OsType
+    - amazon
+  CentosHost: !Equals
+    - !Ref OsType
+    - centos
+  RhelHost: !Equals
+    - !Ref OsType
+    - rhel
+  SuseHost: !Equals
+    - !Ref OsType
+    - suse
+  UbuntuHost: !Equals
+    - !Ref OsType
+    - ubuntu
+  LinuxHost: !Or
+    - !Equals
+      - !Ref OsType
+      - amazon
+    - !Equals
+      - !Ref OsType
+      - centos
+    - !Equals
+      - !Ref OsType
+      - rhel
+    - !Equals
+      - !Ref OsType
+      - suse
+    - !Equals
+      - !Ref OsType
+      - ubuntu
+  RhelFamily: !Or
+    - !Equals
+      - !Ref OsType
+      - amazon
+    - !Equals
+      - !Ref OsType
+      - centos
+    - !Equals
+      - !Ref OsType
+      - rhel
+  WindowsHost: !Equals
+    - !Ref OsType
+    - windows
+  SetupChefdk: !Equals
+    - !Ref InstallChefdk
+    - 'true'
+  SetupChefClient: !Equals
+    - !Ref InstallChefClient
+    - 'true'
+Resources:
+  IamRole:
+    Type: 'AWS::IAM::Role'
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - ec2.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Path: /
+  IamPolicies:
+    Type: 'AWS::IAM::Policy'
+    Properties:
+      PolicyName: !Join
+        - ''
+        - - !Ref 'AWS::StackName'
+          - '-instance-policy'
+      PolicyDocument:
+        Statement:
+          - Effect: Allow
+            Action:
+              - 's3:*'
+              - 'ec2:Describe*'
+              - 'elasticloadbalancing:Describe*'
+              - 'autoscaling:Describe*'
+              - 'cloudwatch:*'
+              - 'logs:*'
+              - 'sns:*'
+            Resource: '*'
+      Roles:
+        - !Ref IamRole
+  IamInstanceProfile:
+    Type: 'AWS::IAM::InstanceProfile'
+    Properties:
+      Path: /
+      Roles:
+        - !Ref IamRole
+  BastionSecurityGroup:
+    Type: 'AWS::EC2::SecurityGroup'
+    Properties:
+      GroupDescription: SSH Access to Bastion Instance
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Join
+            - ''
+            - - !Ref 'AWS::StackName'
+              - '-bastion-access'
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Project
+          Value: !Ref Project
+        - Key: DeleteAfter
+          Value: !Ref DeleteAfter
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !If
+            - LinuxHost
+            - '22'
+            - '3389'
+          ToPort: !If
+            - LinuxHost
+            - '22'
+            - '3389'
+          CidrIp: !Ref NetworkAccessIP
+        - IpProtocol: icmp
+          FromPort: '-1'
+          ToPort: '-1'
+          CidrIp: !Ref NetworkAccessIP
+      SecurityGroupEgress:
+        - IpProtocol: '-1'
+          CidrIp: 0.0.0.0/0
+  EC2Instance:
+    Type: 'AWS::EC2::Instance'
+    DependsOn:
+      - BastionSecurityGroup
+      - IamInstanceProfile
+    Properties:
+      IamInstanceProfile: !Ref IamInstanceProfile
+      ImageId: !If
+        - RhelHost
+        - !FindInMap
+          - RegionMap
+          - !Ref 'AWS::Region'
+          - AMIRhel
+        - !If
+          - UbuntuHost
+          - !FindInMap
+            - RegionMap
+            - !Ref 'AWS::Region'
+            - AMIUbuntu
+          - !If
+            - AmazonHost
+            - !FindInMap
+              - RegionMap
+              - !Ref 'AWS::Region'
+              - AMIAmazon
+            - !If
+              - CentosHost
+              - !FindInMap
+                - RegionMap
+                - !Ref 'AWS::Region'
+                - AMICentos
+              - !If
+                - SuseHost
+                - !FindInMap
+                  - RegionMap
+                  - !Ref 'AWS::Region'
+                  - AMISuse
+                - !If
+                  - WindowsHost
+                  - !FindInMap
+                    - RegionMap
+                    - !Ref 'AWS::Region'
+                    - AMIWindows
+                  - unknown
+      InstanceInitiatedShutdownBehavior: stop
+      InstanceType: !Ref InstanceType
+      KeyName: !Ref Ec2KeyPair
+      Monitoring: 'true'
+      SecurityGroupIds:
+        - !Ref BastionSecurityGroup
+        - !Ref InternalAccessSecurityGroup
+      SubnetId: !Ref PublicSubnet
+      UserData: !If
+        - RhelFamily
+        - !Base64
+          'Fn::Join':
+            - ''
+            - - |
+                #!/bin/bash
+              - !FindInMap
+                - bootstrap
+                - rhel
+                - warmebs
+              - |+
+
+              - !FindInMap
+                - bootstrap
+                - rhel
+                - yumupdate
+              - |+
+
+              - !Join
+                - ''
+                - - !FindInMap
+                    - bootstrap
+                    - rhel
+                    - installpackagelist
+                  - !Ref PackageList
+                  - |+
+
+              - !If
+                - SetupChefClient
+                - !Join
+                  - ''
+                  - - !FindInMap
+                      - bootstrap
+                      - linux
+                      - installchefclient
+                    - !Ref ChefClientVersion
+                    - |+
+
+                - !Ref 'AWS::NoValue'
+              - !If
+                - SetupChefdk
+                - !Join
+                  - ''
+                  - - !FindInMap
+                      - bootstrap
+                      - linux
+                      - installchefdk
+                    - !Ref ChefdkVersion
+                    - |+
+
+                - !Ref 'AWS::NoValue'
+        - !If
+          - UbuntuHost
+          - !Base64
+            'Fn::Join':
+              - ''
+              - - |
+                  #!/bin/bash
+                - !FindInMap
+                  - bootstrap
+                  - ubuntu
+                  - warmebs
+                - |+
+
+                - !Join
+                  - ''
+                  - - !FindInMap
+                      - bootstrap
+                      - ubuntu
+                      - installpackagelist
+                    - !Ref PackageList
+                    - |+
+
+                - !If
+                  - SetupChefClient
+                  - !Join
+                    - ''
+                    - - !FindInMap
+                        - bootstrap
+                        - linux
+                        - installchefclient
+                      - !Ref ChefClientVersion
+                      - |+
+
+                  - !Ref 'AWS::NoValue'
+                - !If
+                  - SetupChefdk
+                  - !Join
+                    - ''
+                    - - !FindInMap
+                        - bootstrap
+                        - linux
+                        - installchefdk
+                      - !Ref ChefdkVersion
+                      - |+
+
+                  - !Ref 'AWS::NoValue'
+          - !If
+            - WindowsHost
+            - !Base64
+              'Fn::Join':
+                - ''
+                - - !If
+                    - SetupChefClient
+                    - !Join
+                      - ''
+                      - - !FindInMap
+                          - bootstrap
+                          - windows
+                          - installchefclient
+                        - !Ref ChefClientVersion
+                        - |+
+
+                    - !Ref 'AWS::NoValue'
+                  - !If
+                    - SetupChefdk
+                    - !Join
+                      - ''
+                      - - !FindInMap
+                          - bootstrap
+                          - windows
+                          - installchefdk
+                        - !Ref ChefdkVersion
+                        - |+
+
+                    - !Ref 'AWS::NoValue'
+            - !Ref 'AWS::NoValue'
+      Tags:
+        - Key: Name
+          Value: !Ref 'AWS::StackName'
+        - Key: Owner
+          Value: !Ref Owner
+        - Key: Project
+          Value: !Ref Project
+        - Key: DeleteAfter
+          Value: !Ref DeleteAfter
+  EIP:
+    Type: 'AWS::EC2::EIP'
+    Properties:
+      Domain: vpc
+  EIPAssociation:
+    Type: 'AWS::EC2::EIPAssociation'
+    DependsOn:
+      - EC2Instance
+      - EIP
+    Properties:
+      InstanceId: !Ref EC2Instance
+      AllocationId: !GetAtt
+        - EIP
+        - AllocationId
+Outputs:
+  Owner:
+    Description: Team or Individual that Owns this Formation.
+    Value: !Ref Owner
+  Project:
+    Description: The project name
+    Value: !Ref Project
+  DeleteAfter:
+    Description: It is ok to delete the Formation after this date
+    Value: !Ref DeleteAfter
+  PublicDns:
+    Description: Bastion Public DNS Name
+    Value: !GetAtt
+      - EC2Instance
+      - PublicDnsName
+  EIP:
+    Description: Bastion External IP Address
+    Value: !Ref EIP
+  OsType:
+    Description: OS Type.
+    Value: !Ref OsType
+  InstanceType:
+    Description: Instance Type.
+    Value: !Ref InstanceType
+  Ec2KeyPair:
+    Description: Key Pair used.
+    Value: !Ref Ec2KeyPair
+  PackageList:
+    Description: Package List Installed
+    Value: !Ref PackageList
+  InstallChefdk:
+    Description: Install ChefDK
+    Value: !Ref InstallChefdk
+  ChefdkVersion:
+    Condition: SetupChefdk
+    Description: Installed ChefDK Version
+    Value: !Ref ChefdkVersion
+  InstallChefClient:
+    Description: Install Chef Client
+    Value: !Ref InstallChefClient
+  ChefClientVersion:
+    Condition: SetupChefdk
+    Description: Installed Chef Client Version
+    Value: !Ref ChefClientVersion
+  BastionSecurityGroup:
+    Description: Bastion Security Group to Allow Remote Access
+    Value: !Ref BastionSecurityGroup
+  IAMRole:
+    Description: IAM Instance Profile Role Created.
+    Value: !Ref IamRole
+  VPC:
+    Description: VPC Used
+    Value: !Ref VPC
+  PublicSubnet:
+    Description: Public Subnet the Bastion Host was Deployed on.
+    Value: !Ref PublicSubnet
+Metadata:
+  'AWS::CloudFormation::Interface':
+    ParameterGroups:
+      - Label:
+          default: Ownership
+        Parameters:
+          - Owner
+          - Project
+          - DeleteAfter
+      - Label:
+          default: Instance Settings
+        Parameters:
+          - Ec2KeyPair
+          - OsType
+          - InstanceType
+          - PackageList
+          - InstallChefdk
+          - ChefdkVersion
+          - InstallChefClient
+          - ChefClientVersion
+      - Label:
+          default: Network Configuration
+        Parameters:
+          - VPC
+          - PublicSubnet
+          - InternalAccessSecurityGroup
+          - PublicNetworkAcl
+          - NetworkAccessIP
+      - Label:
+          default: Network ACL Rule Numbers
+    ParameterLabels:
+      Owner:
+        default: Team or Individual Owner
+      DeleteAfter:
+        default: Delete After Date
+      PublicSubnet:
+        default: Public Subnet
+      PublicNetworkAcl:
+        default: Public Network ACL
+      InternalAccessSecurityGroup:
+        default: Instance Access Security Group
+      NetworkAccessIP:
+        default: Network IP to Access Bastion Host
+      OsType:
+        default: OS Type
+      InstanceType:
+        default: Instance Type
+      PackageList:
+        default: Package List
+      InstallChefdk:
+        default: Instance ChefDK
+      ChefdkVersion:
+        default: ChefDK Version
+      InstallChefClient:
+        default: Install Chef Client
+      ChefClientVersion:
+        default: Chef Client Version
