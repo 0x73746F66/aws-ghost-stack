@@ -37,7 +37,6 @@ curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setu
 sudo python ./awslogs-agent-setup.py --region $AWS_DEFAULT_REGION
 # put diff of config.production.json in $GHOST_DIR
 # auto start ghost with pm2 via /etc/rc.local
-sudo chkconfig awslogs on
 sudo service awslogs start
 export NODE_ENV=production
 # ghost-storage-adapter-s3 does not read creds from the EC2 IAM role
