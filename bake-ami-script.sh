@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-GHOST_DIR=`/var/www/ghost`
+GHOST_DIR=/var/www/ghost
 
 sudo apt update
 sudo apt upgrade -y
