@@ -35,6 +35,8 @@ cp -r $GHOST_DIR/versions/$GHOST_VERSION/node_modules/ghost-storage-adapter-s3 \
 
 # put diff of config.production.json in $GHOST_DIR
 # auto start ghost with pm2 via /etc/rc.local
+sudo chkconfig awslogs on
+sudo service awslogs start
 export NODE_ENV=production
 # ghost-storage-adapter-s3 does not read creds from the EC2 IAM role
 export AWS_ACCESS_KEY_ID="<change me>"
@@ -46,3 +48,6 @@ cd $GHOST_DIR
 pm2 startup ubuntu -u ubuntu --hp $GHOST_DIR
 pm2 start current/index.js --name ghost
 # save & exit rc.local
+curl https://s3.amazonaws.com/aws-cloudwatch/downloads/latest/awslogs-agent-setup.py -O
+sudo python ./awslogs-agent-setup.py --region $AWS_DEFAULT_REGION
+

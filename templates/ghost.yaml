@@ -9,15 +9,17 @@ Parameters:
   Project:
     Description: Enter Project Name.
     Type: String
+    Default: ghost
   DeleteAfter:
     Description: >-
       Enter Date It's Ok to Delete the Stack or 'Never' if meant to be
-      persistent.
+      persistent. (00/00/201x)
     Type: String
-    Default: 00/00/201x
+    Default: never
   Ec2KeyPair:
     Description: Select Keypair to Assign to EC2 Instances
     Type: 'AWS::EC2::KeyPair::KeyName'
+    Default: ghost
   MinAutoScaleCount:
     Description: Enter Minimum Instance Auto Scale Count.
     Type: Number
@@ -25,7 +27,7 @@ Parameters:
   MaxAutoScaleCount:
     Description: Enter Maximum Instance Auto Scale Count.
     Type: Number
-    Default: '4'
+    Default: '10'
   VPC:
     Description: Select VPC.
     Type: 'AWS::EC2::VPC::Id'
@@ -151,11 +153,11 @@ Parameters:
   AMI:
     Description: Enter Baked AMI ID.
     Type: String
-    Default: ami-81e009e3
+    Default: ami-0be70f69
   InstanceType:
     Description: Select Instance Type.
     Type: String
-    Default: t2.medium
+    Default: t2.micro
     AllowedValues:
       - t2.nano
       - t2.micro
