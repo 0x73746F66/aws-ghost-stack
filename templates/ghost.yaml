@@ -85,7 +85,7 @@ Parameters:
   ElbSslCertArn:
     Description: (Skip if Not Using SSL) SSL Certificate ARN for the ELB to use.
     Type: String
-    Default: 'arn:aws:iam::0000000000000:server-certificate/www.domain.com'
+    Default: 'arn:aws:acm:ap-southeast-2:112398043980:certificate/5b12c9cc-68a0-4ddc-8354-4b488aa9a3bd'
   ElbHttpListeningPort:
     Description: Enter HTTP Listening Port for ELB.
     Type: String
@@ -132,14 +132,14 @@ Parameters:
   UseSsl:
     Description: Use SSL/TLS?
     Type: String
-    Default: 'false'
+    Default: 'true'
     AllowedValues:
       - 'true'
       - 'false'
   ListenOnBothPorts:
     Description: (Skip if Not Using SSL) Listen on Both HTTP and HTTPS on the ELB?
     Type: String
-    Default: 'false'
+    Default: 'true'
     AllowedValues:
       - 'true'
       - 'false'
@@ -153,11 +153,11 @@ Parameters:
   AMI:
     Description: Enter Baked AMI ID.
     Type: String
-    Default: ami-0be70f69
+    Default: ami-47a45125
   InstanceType:
     Description: Select Instance Type.
     Type: String
-    Default: t2.micro
+    Default: t2.nano
     AllowedValues:
       - t2.nano
       - t2.micro
