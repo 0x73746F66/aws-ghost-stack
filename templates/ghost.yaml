@@ -153,7 +153,7 @@ Parameters:
   AMI:
     Description: Enter Baked AMI ID.
     Type: String
-    Default: ami-47a45125
+    Default: ami-c59662a7
   InstanceType:
     Description: Select Instance Type.
     Type: String
