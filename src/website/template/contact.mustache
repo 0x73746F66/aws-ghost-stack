@@ -1,0 +1,75 @@
+{{> menu}}
+<div class="container text-muted">
+    <div class="py-5 text-center">
+      <img class="d-block mx-auto mb-4" src="//s3-ap-southeast-2.amazonaws.com/chrisdlangton/ghost/2017/11/C4D40304-966E-4D72-8EE0-5CB1EDA7DA0B.png" alt="" width="72" height="72">
+      <h2>Contact Request</h2>
+      <p class="lead">
+          Please complete some basic details and I'll get in contact with you promptly.
+          <br>
+          Thank you
+      </p>
+    </div>
+
+    <div class="row">
+      <div class="col"></div>
+      <div class="col-md-8">
+        <p class="mb-4 errors">Please fill in all fields.</p>
+
+        <form action="/" method="POST" id="contact-us-form" class="needs-validation" novalidate="">
+          <div class="row">
+            <div class="col-md-6 mb-4">
+              <label for="firstName">First name</label>
+              <input class="form-control" id="firstName" placeholder="" value="" required="" type="text">
+              <div class="invalid-feedback">
+                Valid first name is required.
+              </div>
+            </div>
+            <div class="col-md-6 mb-4">
+              <label for="lastName">Last name</label>
+              <input class="form-control" id="lastName" placeholder="" value="" required="" type="text">
+              <div class="invalid-feedback">
+                Valid last name is required.
+              </div>
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="email">Email</label>
+            <input class="form-control" id="email" placeholder="you@example.com" type="email">
+            <div class="invalid-feedback">
+              Please enter a valid email address for shipping updates.
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="phone">Phone <span class="text-muted">(Optional)</span></label>
+            <input class="form-control" id="phone" placeholder="+614 00 000 000" required="" type="text">
+            <div class="invalid-feedback">
+              Please enter a valid phone number
+            </div>
+          </div>
+
+          <div class="mb-4">
+            <label for="message">Message</label>
+            <textarea class="form-control" id="message" name="message" placeholder="Enter message"></textarea>
+            <div class="invalid-feedback">
+              Please enter a message
+            </div>
+          </div>
+
+          <hr class="mb-4">
+          <div class="custom-control custom-checkbox">
+            <input class="custom-control-input" id="privacy-acceptance" type="checkbox" required="">
+            <label class="custom-control-label" for="privacy-acceptance">I have read and agree to the privacy statement</label>
+          </div>
+
+          <hr class="mb-4">
+          <p class="mb-4 thanks">Thanks! We'll contact you soon.</p>
+          <p class="mb-4 sending">Sending...</p>
+          <button type="submit" class="btn btn-primary btn-lg btn-block g-recaptcha" data-sitekey="{{recaptcha.site_key}}" data-callback="onContctUsSubmit" data-badge="inline">Submit</button>
+        </form>
+      </div>
+      <div class="col"></div>
+    </div>
+</div>
+{{> footer}}
