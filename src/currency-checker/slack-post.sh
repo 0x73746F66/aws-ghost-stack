@@ -12,11 +12,11 @@ if [ -f ./.slack ]; then
 fi
 
 if [ -z "$TOKEN" ]; then
-    echo "No TOKEN specified" > /dev/stderr
+    echo "No TOKEN specified"
     exit 1
 fi
 if [ -z "$BASE_URL" ]; then
-    echo "No BASE_URL specified" > /dev/stderr
+    echo "No BASE_URL specified"
     exit 1
 fi
 
@@ -25,7 +25,7 @@ while read LINE; do
 done
 
 if [ -z "$text" ]; then
-    echo "No text specified" > /dev/stderr
+    echo "No text specified"
     exit 1
 fi
 
@@ -48,6 +48,7 @@ json+='}'
 status="$(curl -s -d -X POST --silent --data-urlencode "payload=$json" "$BASE_URL$TOKEN")"
 
 if [ "$status" != "ok" ]; then
-  echo "curl error [$status]" > /dev/stderr
+  echo "curl error [$status]"
   exit 1
 fi
+
