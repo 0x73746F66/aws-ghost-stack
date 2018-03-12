@@ -1,6 +1,7 @@
 .idea
 .ssh
 .git
+.DS_Store
 **.pem
 **.zip
 credentials

@@ -1,0 +1,18 @@
+{
+  "Comment": "",
+  "Changes": [
+    {
+      "Action": "UPSERT",
+      "ResourceRecordSet": {
+        "Name": "dev.langton.cloud.",
+        "Type": "CNAME",
+        "TTL": 300,
+        "ResourceRecords": [
+          {
+            "Value": "d2u7d6p96qxmq6.cloudfront.net"
+          }
+        ]
+      }
+    }
+  ]
+}
