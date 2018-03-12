@@ -1,8 +1,20 @@
-#!/usr/bin/env python
+#!/home/chris/crypto/bin/python
 import ConfigParser, os, urllib, json, sys, requests, pytz, subprocess, ast
 from datetime import datetime
 from time import time
+from os import unlink
+import argparse
+from inspect import currentframe, getframeinfo
 
+parser = argparse.ArgumentParser(description='Crypto wallet checker')
+parser.add_argument('--silent', '-s',
+                    action='store_true',
+                    help='discrete flag')
+parser.add_argument('--verbose', '-v',
+                    action='store_true',
+                    help='verbose flag')
+parser.add_argument('coins', nargs='*')
+args = parser.parse_args()
 headers = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/39.0.2171.95 Safari/537.36'}
 
 config = ConfigParser.RawConfigParser()
@@ -15,7 +27,7 @@ currency = config.get('other', 'currency')
 net_position = 0
 net_position_unconfirmed = 0
 
-for COIN in sys.argv[1:]:
+for COIN in args.coins:
     coin_code = config.get(COIN, 'coin_code')
     DATA[COIN] = {}
 
@@ -35,7 +47,9 @@ for COIN in sys.argv[1:]:
         response2 = requests.get(url2, headers=headers)
         wallet_data = json.loads(response2.content)
         if 'error' in wallet_data:
-            print "%s %s" % (wallet, wallet_data['error'])
+            if not args.silent:
+                frameinfo = getframeinfo(currentframe())
+                print "[Line %d] %s %s" % (frameinfo.lineno, wallet, wallet_data['error'])
             continue
 
         if COIN == 'zcash' or COIN == 'raven':
@@ -54,12 +68,13 @@ for COIN in sys.argv[1:]:
     DATA[COIN]['wallet_balance'] = balance
     DATA['summary']["Wallet %s" % coin_code] = "%0.8f %s" % (balance, coin_code)
 
+    api_key = config.get(COIN, 'api_key')
     url3 = "%s" % config.get(COIN, 'pools_base_url')
-    response3 = requests.get(url3, headers=headers)
+    response3 = requests.get(url3.format(api_key=api_key), headers=headers)
     pool_data = json.loads(response3.content)
 
     if 'getuserbalance' in pool_data:
-        DATA['pools'][pool_coin] = pool_data['getuserbalance']
+        DATA['pools'][COIN] = pool_data['getuserbalance']
         pool_balance = pool_data['getuserbalance']['data']
         net_coin = 0
         net_coin_unconfirmed = 0
@@ -161,21 +176,37 @@ fp = "%d.json" % int(time())
 with open(fp, 'w') as outfile:
     json.dump(DATA, outfile, ensure_ascii=False, indent=2, sort_keys=True)
 
-status = None
-try:
-    upload = subprocess.Popen("%s s3 cp --profile %s %s s3://%s/%s > /dev/null" % (aws, profile, fp, bucket, fp), shell=True, stderr=subprocess.PIPE, cwd=os.path.dirname(os.path.realpath(__file__)))
-    err = upload.stderr.read()
-    if err:
-        print "err [%s]" % err
+backup_to_s3 = ast.literal_eval(config.get('other', 'backup_to_s3'))
+if backup_to_s3:
+    status = None
+    try:
+        upload = subprocess.Popen("%s s3 cp --profile %s %s s3://%s/%s > /dev/null" % (aws, profile, fp, bucket, fp), shell=True, stderr=subprocess.PIPE, cwd=os.path.dirname(os.path.realpath(__file__)))
+        err = upload.stderr.read()
+        if err:
+            if not args.silent:
+                frameinfo = getframeinfo(currentframe())
+                print "[Line %d] Error %s" % (frameinfo.lineno, err)
+            sys.exit(1)
+        status = subprocess.Popen("%s s3 presign --profile %s s3://%s/%s" % (aws, profile, bucket, fp), shell=True, stdout=subprocess.PIPE, cwd=os.path.dirname(os.path.realpath(__file__)))
+    except OSError as e:
+        if not args.silent:
+            frameinfo = getframeinfo(currentframe())
+            print "[Line %d] Error %s" % (frameinfo.lineno, e)
         sys.exit(1)
-    status = subprocess.Popen("%s s3 presign --profile %s s3://%s/%s" % (aws, profile, bucket, fp), shell=True, stdout=subprocess.PIPE, cwd=os.path.dirname(os.path.realpath(__file__)))
-except OSError as e:
-    print e
-    sys.exit(1)
 
-if status:
-    print "%s" % status.stdout.read()
+    if status and not args.silent and args.verbose:
+        print "%s" % status.stdout.read()
 
-for k, v in enumerate(sorted(DATA['summary'])):
-    print "%s\n%s\n" % (v, DATA['summary'][v])
+if not args.silent and args.verbose:
+    for k, v in enumerate(sorted(DATA['summary'])):
+        print "%s\n%s\n" % (v, DATA['summary'][v])
 
+cleanup = ast.literal_eval(config.get('other', 'cleanup'))
+if cleanup:
+    try:
+        unlink(fp)
+    except OSError as e:
+        if not args.silent:
+            frameinfo = getframeinfo(currentframe())
+            print "[Line %d] Error %s" % (frameinfo.lineno, e)
+        sys.exit(1)

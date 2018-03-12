@@ -7,3 +7,10 @@
 credentials
 config.production.json
 backup/
+# virtualenv
+src/currency-checker/bin/
+src/currency-checker/include/
+src/currency-checker/lib/
+src/currency-checker/local/
+src/currency-checker/share/
+src/currency-checker/pip-selfcheck.json

@@ -1,4 +1,2 @@
-export BASE_URL=https://hooks.slack.com/services/
-export TOKEN=
-export username=
-export icon_emoji=
+export username=crypto-checker
+export icon_emoji=:bitcoin:
