@@ -43,9 +43,15 @@ for COIN in args.coins:
     DATA[COIN]['wallet_addr'] = []
     for wallet in ast.literal_eval(config.get(COIN, "wallet")):
         url2 = "%s/%s" % (config.get(COIN, 'explorer_base_url'), wallet)
-
-        response2 = requests.get(url2, headers=headers)
-        wallet_data = json.loads(response2.content)
+        response2 = None
+        try:
+            response2 = requests.get(url2, headers=headers, timeout=5)
+            wallet_data = json.loads(response2.content)
+        except Exception as e:
+            if not args.silent:
+                frameinfo = getframeinfo(currentframe())
+                print "[Line %d] Error %s\nURL %s\n%s" % (frameinfo.lineno, e, url2, response2)
+            continue
         if 'error' in wallet_data:
             if not args.silent:
                 frameinfo = getframeinfo(currentframe())
