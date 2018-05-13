@@ -84,8 +84,6 @@ Parameters:
     MinLength: '10'
     MaxLength: '18'
     AllowedPattern: "(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})/(\\d{1,2})"
-
-  # Remote Access Network
   RemoteCidrForSecurityGroup:
     Description: CIDR Block for SG to Grant Access to Instances (i.e. 192.168.100.0/24)
     Type: String
@@ -708,26 +706,6 @@ Resources:
       GroupId: !Ref InternalAccessSecurityGroup
       IpProtocol: "-1"
       SourceSecurityGroupId: !Ref InternalAccessSecurityGroup
-  RemoteAccessSecurityGroup:
-    Type: AWS::EC2::SecurityGroup
-    Properties:
-      GroupDescription: Instance Access over VPN/Direct Connect
-      VpcId: !Ref VPC
-      Tags:
-      - Key: Name
-        Value: !Join [ "", [ !Ref "AWS::StackName", "-remote-to-instance" ] ]
-      - Key: Owner
-        Value: !Ref Owner
-      - Key: Project
-        Value: !Ref Project
-      - Key: DeleteAfter
-        Value: !Ref DeleteAfter
-      SecurityGroupIngress:
-      - IpProtocol: "-1"
-        CidrIp: !Ref RemoteCidrForSecurityGroup
-      SecurityGroupEgress:
-      - IpProtocol: "-1"
-        CidrIp: 0.0.0.0/0
 Outputs:
   Owner:
     Description: Team or Individual that Owns this Formation.
@@ -807,9 +785,6 @@ Outputs:
   InternalAccessSecurityGroup:
     Description: Instance to Instance Access within VPC
     Value: !Ref InternalAccessSecurityGroup
-  RemoteAccessSecurityGroup:
-    Description: Remote Network or IP that can Access the instances of VPN or Direct Connect.
-    Value: !Ref RemoteAccessSecurityGroup
   PublicNetworkACLRuleNumbers:
     Description: Public Network ACL Rules Numbers Created.
     Value:

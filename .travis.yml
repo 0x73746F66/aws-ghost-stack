@@ -13,10 +13,10 @@ install: true
 before_script:
   - npm install -g cfn-lint
 script:
-  - cfn-lint validate templates/bastion.yaml
-  - cfn-lint validate templates/ghost.yaml
-  - cfn-lint validate templates/rds.yaml
-  - cfn-lint validate templates/vpc.yaml
+  - cfn-lint validate --verbose --pseudo AWS::Region=ap-southeast-2 templates/bastion.yaml
+  - cfn-lint validate --verbose --pseudo AWS::Region=ap-southeast-2 templates/ghost.yaml
+  - cfn-lint validate --verbose --pseudo AWS::Region=ap-southeast-2 templates/rds.yaml
+  - cfn-lint validate --verbose --pseudo AWS::Region=ap-southeast-2 templates/vpc.yaml
 
 after_success:
   - echo "Test Success - Branch($TRAVIS_BRANCH) Pull Request($TRAVIS_PULL_REQUEST) Tag($TRAVIS_TAG)"

@@ -1,5 +1,5 @@
 ---
-AWSTemplateFormatVersion: 2010-09-09
+AWSTemplateFormatVersion: '2010-09-09'
 Description: 'Webapp ASG, Baked AMI, ELB, R53, RDS Backed'
 Parameters:
   Owner:
@@ -243,19 +243,6 @@ Conditions:
   ConfigureStickiness: !Equals
     - !Ref ElbStickySessions
     - 'true'
-  EnableSsl: !Equals
-    - !Ref UseSsl
-    - 'true'
-  DisableSsl: !Equals
-    - !Ref UseSsl
-    - 'false'
-  DisableSslOrUseBothPorts: !Or
-    - !Equals
-      - !Ref UseSsl
-      - 'false'
-    - !Equals
-      - !Ref ListenOnBothPorts
-      - 'true'
   UseBothPorts: !Equals
     - !Ref ListenOnBothPorts
     - 'true'
@@ -325,32 +312,11 @@ Resources:
           Value: !Ref Project
         - Key: DeleteAfter
           Value: !Ref DeleteAfter
-      SecurityGroupIngress: !If
-        - DisableSsl
-        - - IpProtocol: tcp
-            FromPort: !Ref ElbHttpListeningPort
-            ToPort: !Ref ElbHttpListeningPort
-            CidrIp: 0.0.0.0/0
-        - !If
-          - EnableSsl
-          - - IpProtocol: tcp
-              FromPort: !Ref ElbHttpsListeningPort
-              ToPort: !Ref ElbHttpsListeningPort
-              CidrIp: 0.0.0.0/0
-          - !If
-            - UseBothPorts
-            - - IpProtocol: tcp
-                FromPort: !Ref ElbHttpListeningPort
-                ToPort: !Ref ElbHttpListeningPort
-                CidrIp: 0.0.0.0/0
-              - IpProtocol: tcp
-                FromPort: !Ref ElbHttpsListeningPort
-                ToPort: !Ref ElbHttpsListeningPort
-                CidrIp: 0.0.0.0/0
-            - - IpProtocol: tcp
-                FromPort: !Ref ElbHttpListeningPort
-                ToPort: !Ref ElbHttpListeningPort
-                CidrIp: 0.0.0.0/0
+      SecurityGroupIngress:
+        IpProtocol: tcp
+        FromPort: !Ref ElbHttpsListeningPort
+        ToPort: !Ref ElbHttpsListeningPort
+        CidrIp: 0.0.0.0/0
       SecurityGroupEgress:
         - IpProtocol: '-1'
           CidrIp: 0.0.0.0/0
@@ -387,11 +353,11 @@ Resources:
     Properties:
       LBCookieStickinessPolicy: !If
         - ConfigureStickiness
-        - - CookieExpirationPeriod: !Ref CookieExpirationPeriod
-            PolicyName: !Join
-              - ''
-              - - !Ref 'AWS::StackName'
-                - '-elbcookie'
+        - CookieExpirationPeriod: !Ref CookieExpirationPeriod
+          PolicyName: !Join
+            - ''
+            - - !Ref 'AWS::StackName'
+              - '-elbcookie'
         - !Ref 'AWS::NoValue'
       Subnets:
         - !Ref PublicSubnet1
@@ -406,39 +372,16 @@ Resources:
       SecurityGroups:
         - !Ref InstanceToElbSecurityGroup
         - !Ref InternetToElbSecurityGroup
-      Listeners: !If
-        - DisableSsl
-        - - LoadBalancerPort: !Ref ElbHttpListeningPort
-            InstancePort: !Ref InstanceHttpListeningPort
-            Protocol: HTTP
-        - !If
-          - UseBothPorts
-          - - LoadBalancerPort: !Ref ElbHttpListeningPort
-              InstancePort: !Ref InstanceHttpListeningPort
-              Protocol: HTTP
-            - SSLCertificateId: !Ref ElbSslCertArn
-              LoadBalancerPort: !Ref ElbHttpsListeningPort
-              InstancePort: !Ref InstanceHttpListeningPort
-              Protocol: HTTPS
-              PolicyNames:
-                - !Join
-                  - ''
-                  - - !Ref 'AWS::StackName'
-                    - '-elbcookie'
-          - !If
-            - EnableSsl
-            - - SSLCertificateId: !Ref ElbSslCertArn
-                LoadBalancerPort: !Ref ElbHttpsListeningPort
-                InstancePort: !Ref InstanceHttpListeningPort
-                Protocol: HTTPS
-                PolicyNames:
-                  - !Join
-                    - ''
-                    - - !Ref 'AWS::StackName'
-                      - '-elbcookie'
-            - - LoadBalancerPort: !Ref ElbHttpListeningPort
-                InstancePort: !Ref InstanceHttpListeningPort
-                Protocol: HTTP
+      Listeners:
+        SSLCertificateId: !Ref ElbSslCertArn
+        LoadBalancerPort: !Ref ElbHttpsListeningPort
+        InstancePort: !Ref InstanceHttpListeningPort
+        Protocol: HTTPS
+        PolicyNames:
+          - !Join
+            - ''
+            - - !Ref 'AWS::StackName'
+              - '-elbcookie'
       LoadBalancerName: !Ref 'AWS::StackName'
       HealthCheck:
         Target: !Join
@@ -486,7 +429,6 @@ Resources:
           - ElasticLoadBalancer
           - DNSName
   InboundPublicNetworkAclEntryHttpToElb:
-    Condition: DisableSslOrUseBothPorts
     Type: 'AWS::EC2::NetworkAclEntry'
     Properties:
       NetworkAclId: !Ref PublicNetworkAcl
@@ -499,7 +441,6 @@ Resources:
         From: !Ref ElbHttpListeningPort
         To: !Ref ElbHttpListeningPort
   InboundPublicNetworkAclEntryHttpsToElb:
-    Condition: EnableSsl
     Type: 'AWS::EC2::NetworkAclEntry'
     Properties:
       NetworkAclId: !Ref PublicNetworkAcl
@@ -781,12 +722,7 @@ Outputs:
   ElasticLoadBalancer:
     Description: Elastic Load Balancer.
     Value: !Ref ElasticLoadBalancer
-  ElbHttpListeningPort:
-    Condition: DisableSslOrUseBothPorts
-    Description: Elastic Load Balancer HTTP Listening Port.
-    Value: !Ref ElbHttpListeningPort
   ElbHttpsListeningPort:
-    Condition: EnableSsl
     Description: Elastic Load Balancer HTTPS Listening Port.
     Value: !Ref ElbHttpsListeningPort
   ElbStickySessions:
