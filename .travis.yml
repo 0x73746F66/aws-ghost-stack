@@ -8,27 +8,19 @@ env:
     - AWS_DEFAULT_REGION=ap-southeast-2
 
 before_install:
-  - echo "Installing AWS CLI"
-  - pip install --upgrade --user awscli
-  - echo "Installing test gems"
-  - gem install yaml-lint
+  - npm install -g cfn-lint
 
 install: true
 
 script:
-  - aws cloudformation validate-template --template-body file://templates/bastion.yaml
-  - yaml-lint templates/bastion.yaml
-  - aws cloudformation validate-template --template-body file://templates/ghost.yaml
-  - yaml-lint templates/ghost.yaml
-  - aws cloudformation validate-template --template-body file://templates/rds.yaml
-  - yaml-lint templates/rds.yaml
-  - aws cloudformation validate-template --template-body file://templates/vpc.yaml
-  - yaml-lint templates/vpc.yaml
+  - cfn-lint validate templates/bastion.yaml
+  - cfn-lint validate templates/ghost.yaml
+  - cfn-lint validate templates/rds.yaml
+  - cfn-lint validate templates/vpc.yaml
 
 after_success:
   - echo "Test Success - Branch($TRAVIS_BRANCH) Pull Request($TRAVIS_PULL_REQUEST) Tag($TRAVIS_TAG)"
   - echo "Cloudformation templates validated"
-  - echo "YAML linted"
 
 notifications:
   email: false
