@@ -1,0 +1,101 @@
+#!/bin/bash -ex
+exec > >(tee /var/log/rc.local.log|logger -t rc.local -s 2>/dev/console) 2>&1
+#
+# rc.local
+#
+# This script is executed at the end of each multiuser runlevel.
+# Make sure that the script will "exit 0" on success or any other
+# value on error.
+#
+# In order to enable or disable this script just change the execution
+# bits.
+#
+# By default this script does nothing.
+linux_user=ubuntu
+limux_home=/home/ubuntu
+linux_group=ubuntu
+pm2_distribution=systemd
+ghost_port=2368
+app_name=ghost
+base_url=https://www.langton.cloud
+ssm_param_rds_password=ghost-rds-langton-cloud
+s3bucket=chrisdlangton
+s3prefix=ghost/
+mysql_host=ghost-rds.langton.cloud
+mysql_user=ghost
+mysql_schema=ghost
+
+export NODE_ENV=production
+export GHOST_DIR=/var/www/ghost
+export GHOST_VERSION=`node -p -e "require('$GHOST_DIR/current/package.json').version"`
+export AWS_DEFAULT_REGION=`curl -s http://instance-data/latest/dynamic/instance-identity/document | python -c "import sys, json; print json.load(sys.stdin)['region']"`
+
+# Add env vars to ubuntu user profile
+echo "export NODE_ENV=${NODE_ENV}" >> ${limux_home}/.profile
+echo "export GHOST_DIR=${GHOST_DIR}" >> ${limux_home}/.profile
+echo "export GHOST_VERSION=${GHOST_VERSION}" >> ${limux_home}/.profile
+echo "export AWS_DEFAULT_REGION=${AWS_DEFAULT_REGION}" >> ${limux_home}/.profile
+
+# Update awscli config with region we deployed our ec2 instance
+mkdir -p $limux_home/.aws
+aws_conf=$limux_home/.aws/config
+echo '' > ${aws_conf}
+cat <<EOF > ${aws_conf}
+[default]
+region = ${AWS_DEFAULT_REGION}
+EOF
+
+# Update the Ghost config with our current RDS password from SSM
+ssm_param=`runuser -l ${linux_user} -c "aws ssm get-parameter --name ${ssm_param_rds_password} --with-decryption"`
+db_passwd=`echo $ssm_param | python -c "import sys, json; print json.load(sys.stdin)['Parameter']['Value']"`
+
+ghost_conf=${GHOST_DIR}/config.production.json
+echo '' > ${ghost_conf}
+cat <<EOF > ${ghost_conf}
+{
+  "url": "${base_url}",
+  "server": {
+    "port": ${ghost_port},
+    "host": "127.0.0.1"
+  },
+  "database": {
+    "client": "mysql",
+    "connection": {
+      "host": "${mysql_host}",
+      "user": "${mysql_user}",
+      "password": "${db_passwd}",
+      "database": "${mysql_schema}"
+    }
+  },
+  "mail": {
+    "transport": "Direct"
+  },
+  "logging": {
+    "transports": [
+      "file",
+      "stdout"
+    ]
+  },
+  "storage": {
+    "active": "s3",
+    "s3": {
+      "bucket": "${s3bucket}",
+      "pathPrefix": "${s3prefix}",
+      "serverSideEncryption": "AES256"
+    }
+  },
+  "process": "${pm2_distribution}",
+  "paths": {
+    "contentPath": "${GHOST_DIR}/content"
+  }
+}
+EOF
+
+# Run ghost
+chown -R ${linux_user}:${linux_group} $GHOST_DIR
+cd ${GHOST_DIR}
+env PATH=$PATH:/usr/bin pm2 startup ${pm2_distribution} -u ${linux_user} --hp ${GHOST_DIR}
+chown ${linux_user}:${linux_group} ${GHOST_DIR}/.pm2/rpc.sock ${GHOST_DIR}/.pm2/pub.sock
+runuser -l ${linux_user} -c "cd ${GHOST_DIR}; pm2 start current/index.js --name ${app_name}"
+
+exit 0
