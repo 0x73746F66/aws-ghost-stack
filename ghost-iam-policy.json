@@ -1,0 +1,46 @@
+{
+    "Version": "2012-10-17",
+    "Statement": [
+        {
+            "Sid": "ghost0",
+            "Effect": "Allow",
+            "Action": [
+                "cloudwatch:PutMetricData",
+                "logs:CreateLogGroup"
+            ],
+            "Resource": "*"
+        },
+        {
+            "Sid": "ghost1",
+            "Effect": "Allow",
+            "Action": [
+                "s3:GetObject",
+                "s3:PutObject",
+                "sts:AssumeRole",
+                "ssm:GetParameter",
+                "logs:PutLogEvents"
+            ],
+            "Resource": [
+                "arn:aws:ssm:ap-southeast-2:112398043980:parameter/ghost-rds-langton-cloud",
+                "arn:aws:logs:ap-southeast-2:112398043980:log-group:/aws/ec2/ghost",
+                "arn:aws:logs:ap-southeast-2:112398043980:log-group:/aws/ec2/ghost:*:*",
+                "arn:aws:iam::112398043980:role/*",
+                "arn:aws:s3:::chrisdlangton/ghost/*"
+            ]
+        },
+        {
+            "Sid": "ghost2",
+            "Effect": "Allow",
+            "Action": [
+                "logs:CreateLogStream",
+                "logs:DescribeLogGroups",
+                "logs:DescribeLogStreams",
+                "logs:PutLogEvents"
+            ],
+            "Resource": [
+                "arn:aws:logs:ap-southeast-2:112398043980:log-group:/aws/ec2/ghost",
+                "arn:aws:logs:ap-southeast-2:112398043980:log-group:/aws/ec2/ghost:*:*"
+            ]
+        }
+    ]
+}

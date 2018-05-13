@@ -80,7 +80,7 @@ Parameters:
   AlertSnsTopicArn:
     Description: Enter Alert Notification SNS Topic ARN for RDS.
     Type: String
-    Default: 'arn:aws:sns:us-west-2:000000000000:rds-alerts'
+    Default: 'arn:aws:sns:us-west-2:000000000000:my-topic'
   PreferredBackupWindow:
     Description: Enter Preferred Backup Window Time (UTC).
     Type: String
